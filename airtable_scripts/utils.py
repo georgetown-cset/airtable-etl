@@ -1,8 +1,9 @@
-import itertools
 import json
+import os
 import requests
 import tempfile
 from google.cloud import storage
+from more_itertools import batched
 
 
 def jsonl_dir_to_json_iter(jsonl_dir: str) -> iter:
@@ -25,14 +26,17 @@ def jsonl_dir_to_batches(jsonl_dir: str, batch_size=10) -> iter:
     :return:
     """
     jsons = jsonl_dir_to_json_iter(jsonl_dir)
-    return itertools.batched(jsons, batch_size)
+    return batched(jsons, batch_size)
 
 
 def insert_into_airtable(base_id: str, table_name: str, data: list, token: str) -> None:
     headers = {"Authorization": f"Bearer {token}"}
-    result = requests.post(f"https://api.airtable.com/v0/{base_id}/{table_name}", json=data, headers=headers)
+    reformatted_data = {"records": [{"fields": elt} for elt in data]}
+    result = requests.post(f"https://api.airtable.com/v0/{base_id}/{table_name}", json=reformatted_data, headers=headers)
     if result.status_code != 200:
-        raise ValueError(f"Unexpected status code: {reslt.status_code}")
+        print(result.text)
+        print(result.content)
+        raise ValueError(f"Unexpected status code: {result.status_code}")
 
 
 def jsonl_dir_to_airtable(bucket_name: str, input_prefix: str, table_name: str, base_id: str, token: str) -> None:
@@ -50,11 +54,12 @@ def jsonl_dir_to_airtable(bucket_name: str, input_prefix: str, table_name: str, 
     blobs = bucket.list_blobs(prefix=input_prefix)
     with tempfile.TemporaryDirectory() as tmpdir:
         for blob in blobs:
-            file_name = os.path.join(tmpdir.name, blob.name.split("/"))
+            file_name = os.path.join(tmpdir, blob.name.split("/")[-1])
             blob.download_to_filename(file_name)
         batches = jsonl_dir_to_batches(tmpdir)
         for batch in batches:
             insert_into_airtable(base_id, table_name, batch, token)
+
 
 def jsonl_dir_to_airtable_airflow(bucket_name: str, input_prefix: str, table_name: str, base_id: str, token: str) -> None:
     """
@@ -72,15 +77,14 @@ def jsonl_dir_to_airtable_airflow(bucket_name: str, input_prefix: str, table_nam
 
 if __name__ == "__main__":
     # to be used only for testing purposes
-    parser = argparse.ArgumentParser()
-    parser.add_argument("token")
-    args = parser.parse_args()
+    token = os.environ.get("AIRTABLE_TOKEN")
 
-    jsonl_dir_to_airtable_airflow(
-        "airtable-airtable-test",
-        "input-data/data",
-        "test",
-        "appvnA46jraScMMth", # the "Airflow testing" base
+    jsonl_dir_to_airtable(
+        "jtm23",
+        "airtable_tests/data",
+        "Table 1",
+        "appvnA46jraScMMth",  # the "Airflow testing" base
+        token
     )
 
 

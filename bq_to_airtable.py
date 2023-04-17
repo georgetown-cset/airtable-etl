@@ -1,3 +1,8 @@
+"""
+Generates a dag that copies data from BigQuery into Airtable for each config in the bq_to_airtable_config dir
+in the Airflow dag bucket on GCS.
+"""
+
 import json
 import os
 from datetime import datetime
@@ -30,6 +35,7 @@ from dataloader.airflow_utils.defaults import (
     get_default_args,
     get_post_success,
 )
+
 from airtable_scripts.utils import jsonl_dir_to_airtable_airflow
 
 
@@ -42,7 +48,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
     """
     bucket = DEV_DATA_BUCKET
     staging_dataset = "staging_airtable_to_bq"
-    sql_dir = f"sql/airtable_to_bq/"
+    sql_dir = "sql/airtable_to_bq/"
     tmp_dir = f"airtable_to_bq/{config['name']}/tmp"
 
     default_args = get_default_args()
@@ -53,7 +59,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
         default_args=default_args,
         description=f"Airtable data retrieval for {config['name']}",
         schedule_interval=config["schedule_interval"],
-        catchup=False
+        catchup=False,
     )
     with dag:
         clear_tmp_dir = GCSDeleteObjectsOperator(
@@ -70,11 +76,11 @@ def create_dag(dagname: str, config: dict) -> DAG:
                     "destinationTable": {
                         "projectId": PROJECT_ID,
                         "datasetId": staging_dataset,
-                        "tableId": bq_table
+                        "tableId": bq_table,
                     },
                     "allowLargeResults": True,
                     "createDisposition": "CREATE_IF_NEEDED",
-                    "writeDisposition": "WRITE_TRUNCATE"
+                    "writeDisposition": "WRITE_TRUNCATE",
                 }
             },
         )
@@ -83,7 +89,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
             task_id="export_to_gcs",
             source_project_dataset_table=f"{staging_dataset}.{bq_table}",
             destination_cloud_storage_uris=f"gs://{bucket}/{tmp_dir}/{bq_table}/data*.jsonl",
-            export_format="NEWLINE_DELIMITED_JSON"
+            export_format="NEWLINE_DELIMITED_JSON",
         )
 
         add_to_airtable = PythonOperator(
@@ -92,14 +98,22 @@ def create_dag(dagname: str, config: dict) -> DAG:
                 "bucket_name": bucket,
                 "input_prefix": f"{tmp_dir}/{bq_table}/data",
                 "table_name": config["airtable_table"],
-                "base_id": config["airtable_base"]
+                "base_id": config["airtable_base"],
             },
-            python_callable=jsonl_dir_to_airtable_airflow
+            python_callable=jsonl_dir_to_airtable_airflow,
         )
 
-        msg_success = get_post_success(f"Exported new data to Airtable for {config['name']}", dag)
+        msg_success = get_post_success(
+            f"Exported new data to Airtable for {config['name']}", dag
+        )
 
-        clear_tmp_dir >> get_input_data >> export_to_gcs >> add_to_airtable >> msg_success
+        (
+            clear_tmp_dir
+            >> get_input_data
+            >> export_to_gcs
+            >> add_to_airtable
+            >> msg_success
+        )
 
     return dag
 

@@ -57,7 +57,7 @@ def insert_into_airtable(base_id: str, table_name: str, data: list, token: str) 
         raise ValueError(f"Unexpected status code: {result.status_code}")
 
 
-def jsonl_dir_to_airtable(
+def gcs_to_airtable(
     bucket_name: str, input_prefix: str, table_name: str, base_id: str, token: str
 ) -> None:
     """
@@ -81,7 +81,7 @@ def jsonl_dir_to_airtable(
             insert_into_airtable(base_id, table_name, batch, token)
 
 
-def jsonl_dir_to_airtable_airflow(
+def gcs_to_airtable_airflow(
     bucket_name: str, input_prefix: str, table_name: str, base_id: str
 ) -> None:
     """
@@ -94,14 +94,69 @@ def jsonl_dir_to_airtable_airflow(
     """
     connection = BaseHook.get_connection("airtable")
     token = connection.password
-    jsonl_dir_to_airtable(bucket_name, input_prefix, table_name, base_id, token)
+    gcs_to_airtable(bucket_name, input_prefix, table_name, base_id, token)
+
+
+def get_airtable_iter(table_name: str, base_id: str, token: str) -> iter:
+    """
+
+    :param table_name:
+    :param base_id:
+    :param token:
+    :return:
+    """
+    pass
+
+
+def airtable_to_gcs(
+    table_name: str, base_id: str, bucket_name: str, output_prefix: str, token: str
+) -> None:
+    """
+
+    :param table_name:
+    :param base_id:
+    :param bucket_name:
+    :param output_prefix:
+    :param token:
+    :return:
+    """
+    gcs_client = storage.Client()
+    bucket = gcs_client.get_bucket(bucket_name)
+    blob = bucket.blob(output_prefix.strip("/") + "/data.jsonl")
+    data = get_airtable_iter(table_name, base_id, token)
+    for row in data:
+        blob.write(json.dumps(row))
+    blob.close()
+
+
+def airtable_to_gcs_airflow(
+    table_name: str, base_id: str, bucket_name: str, output_prefix: str
+) -> None:
+    """
+
+    :param table_name:
+    :param base_id:
+    :param bucket_name:
+    :param output_prefix:
+    :return:
+    """
+    connection = BaseHook.get_connection("airtable")
+    token = connection.password
+    airtable_to_gcs(table_name, base_id, bucket_name, output_prefix, token)
 
 
 if __name__ == "__main__":
     # to be used only for testing purposes
     token = os.environ.get("AIRTABLE_TOKEN")
 
-    jsonl_dir_to_airtable(
+    gcs_to_airtable(
+        "jtm23",
+        "airtable_tests/data",
+        "Table 1",
+        "appvnA46jraScMMth",  # the "Airflow testing" base
+        token,
+    )
+    airtable_to_gcs(
         "jtm23",
         "airtable_tests/data",
         "Table 1",

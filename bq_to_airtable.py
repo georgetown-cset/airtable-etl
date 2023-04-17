@@ -36,15 +36,15 @@ from dataloader.airflow_utils.defaults import (
     get_post_success,
 )
 
-from airtable_scripts.utils import jsonl_dir_to_airtable_airflow
+from airtable_scripts.utils import gcs_to_airtable_airflow
 
 
 def create_dag(dagname: str, config: dict) -> DAG:
     """
-    Generates a dag that will run a scraper
-    :param dagname:
-    :param config: scraper configuration
-    :return: dag that runs a scraper
+    Generates a dag that will update airtable from BigQuery
+    :param dagname: Name of the dag to create
+    :param config: Pipeline configuration
+    :return: Dag that runs a scraper
     """
     bucket = DEV_DATA_BUCKET
     staging_dataset = "staging_airtable_to_bq"
@@ -57,7 +57,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
     dag = DAG(
         dagname,
         default_args=default_args,
-        description=f"Airtable data retrieval for {config['name']}",
+        description=f"Airtable data ingest for {config['name']}",
         schedule_interval=config["schedule_interval"],
         catchup=False,
     )
@@ -100,7 +100,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
                 "table_name": config["airtable_table"],
                 "base_id": config["airtable_base"],
             },
-            python_callable=jsonl_dir_to_airtable_airflow,
+            python_callable=gcs_to_airtable_airflow,
         )
 
         msg_success = get_post_success(

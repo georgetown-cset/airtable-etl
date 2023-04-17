@@ -52,8 +52,6 @@ def insert_into_airtable(base_id: str, table_name: str, data: list, token: str) 
         headers=headers,
     )
     if result.status_code != 200:
-        print(result.text)
-        print(result.content)
         raise ValueError(f"Unexpected status code: {result.status_code}")
 
 
@@ -105,7 +103,20 @@ def get_airtable_iter(table_name: str, base_id: str, token: str) -> iter:
     :param token:
     :return:
     """
-    pass
+    headers = {"Authorization": f"Bearer {token}"}
+    offset = None
+    while True:
+        query = f"/?offset={offset}" if offset else ""
+        result = requests.get(
+            f"https://api.airtable.com/v0/{base_id}/{table_name}{query}",
+            headers=headers,
+        )
+        data = result.json()
+        for row in data["records"]:
+            yield row
+        if not data.get("offset"):
+            break
+        offset = data["offset"]
 
 
 def airtable_to_gcs(
@@ -124,9 +135,9 @@ def airtable_to_gcs(
     bucket = gcs_client.get_bucket(bucket_name)
     blob = bucket.blob(output_prefix.strip("/") + "/data.jsonl")
     data = get_airtable_iter(table_name, base_id, token)
-    for row in data:
-        blob.write(json.dumps(row))
-    blob.close()
+    with blob.open("w") as f:
+        for row in data:
+            f.write(json.dumps(row))
 
 
 def airtable_to_gcs_airflow(
@@ -157,9 +168,9 @@ if __name__ == "__main__":
         token,
     )
     airtable_to_gcs(
-        "jtm23",
-        "airtable_tests/data",
         "Table 1",
         "appvnA46jraScMMth",  # the "Airflow testing" base
+        "jtm23",
+        "airtable_tests/output",
         token,
     )

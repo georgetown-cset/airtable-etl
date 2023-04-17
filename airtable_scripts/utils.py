@@ -2,6 +2,8 @@ import json
 import os
 import requests
 import tempfile
+
+from airflow.hooks.base_hook import BaseHook
 from google.cloud import storage
 from more_itertools import batched
 
@@ -61,18 +63,18 @@ def jsonl_dir_to_airtable(bucket_name: str, input_prefix: str, table_name: str, 
             insert_into_airtable(base_id, table_name, batch, token)
 
 
-def jsonl_dir_to_airtable_airflow(bucket_name: str, input_prefix: str, table_name: str, base_id: str, token: str) -> None:
+def jsonl_dir_to_airtable_airflow(bucket_name: str, input_prefix: str, table_name: str, base_id: str) -> None:
     """
 
     :param bucket_name:
     :param input_prefix:
     :param table_name:
     :param base_id:
-    :param token:
     :return:
     """
-    # todo - retrieve token from airflow
-    pass
+    connection = BaseHook.get_connection("airtable")
+    token = connection.password
+    jsonl_dir_to_airtable(bucket_name, input_prefix, table_name, base_id, token)
 
 
 if __name__ == "__main__":

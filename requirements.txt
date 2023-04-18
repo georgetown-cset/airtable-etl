@@ -1,3 +1,7 @@
 coverage
 pre-commit
 pytest
+requests
+more-itertools
+google-cloud-storage
+apache-airflow[gcp]

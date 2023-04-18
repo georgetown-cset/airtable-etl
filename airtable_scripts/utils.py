@@ -83,7 +83,7 @@ def gcs_to_airtable_airflow(
     bucket_name: str, input_prefix: str, table_name: str, base_id: str
 ) -> None:
     """
-    Calls `jsonl_dir_to_airtable` from airflow, where we can grab the API key from the airtable connection
+    Calls `gcs_to_airtable` from airflow, where we can grab the API key from the airtable connection
     :param bucket_name: GCS bucket where input data is stored
     :param input_prefix: GCS prefix of input data
     :param table_name: Airtable table name
@@ -97,11 +97,11 @@ def gcs_to_airtable_airflow(
 
 def get_airtable_iter(table_name: str, base_id: str, token: str) -> iter:
     """
-
-    :param table_name:
-    :param base_id:
-    :param token:
-    :return:
+    Retrieves data from an airtable table
+    :param table_name: Airtable table name we are retrieving data from
+    :param base_id: Airtable base
+    :param token: Airtable access token
+    :return: Iterable of rows from `table_name`
     """
     headers = {"Authorization": f"Bearer {token}"}
     offset = None
@@ -113,7 +113,8 @@ def get_airtable_iter(table_name: str, base_id: str, token: str) -> iter:
         )
         data = result.json()
         for row in data["records"]:
-            yield row
+            yield row["fields"]
+        # An offset will be provided if there is an additional page of data to retrieve
         if not data.get("offset"):
             break
         offset = data["offset"]
@@ -123,13 +124,13 @@ def airtable_to_gcs(
     table_name: str, base_id: str, bucket_name: str, output_prefix: str, token: str
 ) -> None:
     """
-
-    :param table_name:
-    :param base_id:
-    :param bucket_name:
-    :param output_prefix:
-    :param token:
-    :return:
+    Retrieves data from airtable and writes it to GCS
+    :param table_name: Airtable table name we are retrieving data from
+    :param base_id: Airtable base
+    :param bucket_name: GCS bucket where output data should go
+    :param output_prefix: GCS prefix where output data should go within `bucket`
+    :param token: Airtable access token
+    :return: None
     """
     gcs_client = storage.Client()
     bucket = gcs_client.get_bucket(bucket_name)
@@ -137,19 +138,19 @@ def airtable_to_gcs(
     data = get_airtable_iter(table_name, base_id, token)
     with blob.open("w") as f:
         for row in data:
-            f.write(json.dumps(row))
+            f.write(json.dumps(row) + "\n")
 
 
 def airtable_to_gcs_airflow(
     table_name: str, base_id: str, bucket_name: str, output_prefix: str
 ) -> None:
     """
-
-    :param table_name:
-    :param base_id:
-    :param bucket_name:
-    :param output_prefix:
-    :return:
+    Calls `airtable_to_gcs` from airflow, where we can grab the API key from the airtable connection
+    :param table_name: Airtable table name we are retrieving data from
+    :param base_id: Airtable base
+    :param bucket_name: GCS bucket where output data should go
+    :param output_prefix: GCS prefix where output data should go within `bucket`
+    :return: None
     """
     connection = BaseHook.get_connection("airtable")
     token = connection.password
@@ -157,7 +158,7 @@ def airtable_to_gcs_airflow(
 
 
 if __name__ == "__main__":
-    # to be used only for testing purposes
+    # This block is only for local testing purposes
     token = os.environ.get("AIRTABLE_TOKEN")
 
     gcs_to_airtable(

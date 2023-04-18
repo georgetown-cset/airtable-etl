@@ -38,6 +38,8 @@ from dataloader.airflow_utils.defaults import (
 
 from airtable_scripts.utils import gcs_to_airtable_airflow
 
+DATASET = "bq_to_airtable"
+
 
 def create_dag(dagname: str, config: dict) -> DAG:
     """
@@ -47,9 +49,9 @@ def create_dag(dagname: str, config: dict) -> DAG:
     :return: Dag that runs a scraper
     """
     bucket = DEV_DATA_BUCKET
-    staging_dataset = "staging_airtable_to_bq"
-    sql_dir = "sql/airtable_to_bq/"
-    tmp_dir = f"airtable_to_bq/{config['name']}/tmp"
+    staging_dataset = f"staging_{DATASET}"
+    sql_dir = f"sql/{DATASET}/"
+    tmp_dir = f"{DATASET}/{config['name']}/tmp"
 
     default_args = get_default_args()
     default_args.pop("on_failure_callback")
@@ -118,9 +120,9 @@ def create_dag(dagname: str, config: dict) -> DAG:
     return dag
 
 
-config_path = os.path.join(f"{os.environ.get('DAGS_FOLDER')}", "bq_to_airtable_config")
+config_path = os.path.join(f"{os.environ.get('DAGS_FOLDER')}", f"{DATASET}_config")
 for config_fi in os.listdir(config_path):
     with open(os.path.join(config_path, config_fi)) as f:
         config = json.loads(f.read())
-    dagname = f"bq_to_airtable_{config['name']}"
+    dagname = f"{DATASET}_{config['name']}"
     globals()[dagname] = create_dag(dagname, config)

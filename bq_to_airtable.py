@@ -50,7 +50,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
     """
     bucket = DEV_DATA_BUCKET
     staging_dataset = f"staging_{DATASET}"
-    sql_dir = f"sql/{DATASET}/"
+    sql_dir = f"sql/{DATASET}/{config['name']}"
     tmp_dir = f"{DATASET}/{config['name']}/tmp"
 
     default_args = get_default_args()

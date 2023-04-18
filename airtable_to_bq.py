@@ -135,7 +135,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
     return dag
 
 
-config_path = os.path.join(f"{os.environ.get('DAGS_FOLDER')}", "bq_to_airtable_config")
+config_path = os.path.join(f"{os.environ.get('DAGS_FOLDER')}", "airtable_to_bq_config")
 for config_fi in os.listdir(config_path):
     with open(os.path.join(config_path, config_fi)) as f:
         config = json.loads(f.read())

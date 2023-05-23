@@ -101,6 +101,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
                 "input_prefix": f"{tmp_dir}/{bq_table}/data",
                 "table_name": config["airtable_table"],
                 "base_id": config["airtable_base"],
+                "column_map": config.get("column_map"),
             },
             python_callable=gcs_to_airtable_airflow,
         )

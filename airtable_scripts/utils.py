@@ -25,7 +25,7 @@ def jsonl_dir_to_json_iter(jsonl_dir: str, column_map: dict) -> iter:
             for line in f:
                 row = json.loads(line)
                 if column_map:
-                    row = {column_map[k]: v for k, v in row.items()}
+                    row = {column_map.get(k, k): v for k, v in row.items()}
                 yield row
 
 
@@ -162,7 +162,7 @@ def airtable_to_gcs(
     with blob.open("w") as f:
         for row in data:
             if column_map:
-                row = {column_map[k]: v for k, v in row.items()}
+                row = {column_map.get(k, k): v for k, v in row.items()}
             f.write(json.dumps(row) + "\n")
 
 
@@ -198,6 +198,7 @@ if __name__ == "__main__":
         "Table 1",
         "appvnA46jraScMMth",  # the "Airflow testing" base
         token,
+        {"foo": "Foo"},
     )
     airtable_to_gcs(
         "Table 1",
@@ -205,4 +206,5 @@ if __name__ == "__main__":
         "jtm23",
         "airtable_tests/output",
         token,
+        {"Foo": "foo", "bar": "mapped_bar"},
     )

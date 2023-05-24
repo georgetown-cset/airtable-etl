@@ -11,6 +11,9 @@ from airflow.hooks.base_hook import BaseHook
 from google.cloud import storage
 from more_itertools import batched
 
+# Used to indicate which Airtable columns should be excluded from the results in BigQuery
+EXCLUDE = "EXCLUDE"
+
 
 def jsonl_dir_to_json_iter(jsonl_dir: str, column_map: dict) -> iter:
     """
@@ -59,6 +62,7 @@ def insert_into_airtable(base_id: str, table_name: str, data: list, token: str) 
         headers=headers,
     )
     if result.status_code != 200:
+        print(result.text)
         raise ValueError(f"Unexpected status code: {result.status_code}")
 
 
@@ -162,7 +166,11 @@ def airtable_to_gcs(
     with blob.open("w") as f:
         for row in data:
             if column_map:
-                row = {column_map.get(k, k): v for k, v in row.items()}
+                row = {
+                    column_map.get(k, k): v
+                    for k, v in row.items()
+                    if column_map.get(k) != EXCLUDE
+                }
             f.write(json.dumps(row) + "\n")
 
 
@@ -206,5 +214,5 @@ if __name__ == "__main__":
         "jtm23",
         "airtable_tests/output",
         token,
-        {"Foo": "foo", "bar": "mapped_bar"},
+        {"Foo": "foo", "bar": "mapped_bar", "baz": EXCLUDE},
     )

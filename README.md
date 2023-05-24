@@ -41,6 +41,6 @@ This query will be used to generate the updated production table from the conten
 current production table.
 * `production_dataset` - BQ dataset containing production table
 * `production_table` - Production BQ table we are updating within `production_dataset`
-* [Optional] `column_map` - A dict mapping Airtable column names to the column names you want to appear in BigQuery. Mapping does not have to cover all columns; unspecified columns will use Airtable names
+* [Optional] `column_map` - A dict mapping Airtable column names to the column names you want to appear in BigQuery. Mapping does not have to cover all columns; unspecified columns will use Airtable names. To exclude columns from BigQuery, map them to the string "EXCLUDE"
 
 Put your JSON in `gs://<your dag dir>/dags/airtable_to_bq_config/` and `airtable_to_bq.py` will generate a DAG from it.

@@ -76,6 +76,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
                 "base_id": config["airtable_base"],
                 "bucket_name": bucket,
                 "output_prefix": f"{tmp_dir}/data",
+                "column_map": config.get("column_map"),
             },
             python_callable=airtable_to_gcs_airflow,
         )

@@ -21,6 +21,7 @@ This query should be used to retrieve the data you want to put in Airtable
 * `airtable_table` - Name of the Airtable table that should receive the data
 * `airtable_base` - Airtable Base ID containing `airtable_table`. To find the Base ID, open the table you want to
 add data to in Airtable, then look at the url. The Base ID appears directly after the domain name, i.e. https://airtable.com/ **appvnA46jraScMMth** /tblfDL6s8f3LWb0C2/viwBnWFt0W8D5UcuB?blocks=hide
+* [Optional] `column_map` - A dict mapping BigQuery column names to the column names you want to appear in Airtable. Mapping does not have to cover all columns; unspecified columns will use BigQuery names
 
 Put your JSON in `gs://<your dag dir>/dags/bq_to_airtable_config/` and `bq_to_airtable.py` will generate a DAG from it.
 
@@ -40,5 +41,6 @@ This query will be used to generate the updated production table from the conten
 current production table.
 * `production_dataset` - BQ dataset containing production table
 * `production_table` - Production BQ table we are updating within `production_dataset`
+* [Optional] `column_map` - A dict mapping Airtable column names to the column names you want to appear in BigQuery. Mapping does not have to cover all columns; unspecified columns will use Airtable names. To exclude columns from BigQuery, map them to the string "EXCLUDE"
 
 Put your JSON in `gs://<your dag dir>/dags/airtable_to_bq_config/` and `airtable_to_bq.py` will generate a DAG from it.

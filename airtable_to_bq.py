@@ -99,7 +99,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
         # in the next two steps,
         # rather than trying to filter data in the airtable query, we load the entire contents of the airtable
         # table into BQ, then filter to the rows we want to update in the production table
-        if (config.get("new_query")):
+        if config.get("new_query"):
             save_new_rows = BigQueryInsertJobOperator(
                 task_id="save_new_rows",
                 configuration={
@@ -149,7 +149,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
             params={
                 "staging_dataset": staging_dataset,
                 "production_dataset": config["production_dataset"],
-                "staging_table_name": new_table if config['new_query'] else raw_table,
+                "staging_table_name": new_table if config["new_query"] else raw_table,
                 "production_table_name": config["production_table"],
             },
         )

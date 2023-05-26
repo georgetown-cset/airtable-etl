@@ -38,7 +38,7 @@ add data to in Airtable, then look at the url. The Base ID appears directly afte
 * `schema_name` - Name of schema (no file extension) that can be found in `gs://airflow-data-exchange(development)?/schemas/airtable_to_bq/<name>/`
 * `new_query` - Optional. Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
 This query will be used to filter only the new rows from the contents of the full Airtable table and save them.
-* `filter_query` - Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
+* `merge_query` - Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
 This query will be used to generate the updated production table from the contents of the full Airtable table and the
 current production table.
 * `production_dataset` - BQ dataset containing production table

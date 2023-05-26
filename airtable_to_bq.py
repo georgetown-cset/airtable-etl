@@ -81,8 +81,10 @@ def create_dag(dagname: str, config: dict) -> DAG:
             python_callable=airtable_to_gcs_airflow,
         )
 
+        date = datetime.now().strftime("%Y%m%d")
         raw_table = f"{config['name']}_raw"
-        filtered_table = f"{config['name']}_filtered"
+        new_table = f"{config['name']}_new_{date}"
+        merged_table = f"{config['name']}_merged"
         gcs_to_bq = GCSToBigQueryOperator(
             task_id="gcs_to_bq",
             bucket=bucket,
@@ -94,20 +96,21 @@ def create_dag(dagname: str, config: dict) -> DAG:
             write_disposition="WRITE_TRUNCATE",
         )
 
+        # in the next two steps,
         # rather than trying to filter data in the airtable query, we load the entire contents of the airtable
-        # table into BQ, then filter to the rows we want to update in the production table here
-        filter_data = BigQueryInsertJobOperator(
-            task_id="filter_data",
+        # table into BQ, then filter to the rows we want to update in the production table
+        merge_data = BigQueryInsertJobOperator(
+            task_id="merge_data",
             configuration={
                 "query": {
                     "query": "{% include '"
-                    + f"{sql_dir}/{config['filter_query']}.sql"
+                    + f"{sql_dir}/{config['merge_query']}.sql"
                     + "' %}",
                     "useLegacySql": False,
                     "destinationTable": {
                         "projectId": PROJECT_ID,
                         "datasetId": staging_dataset,
-                        "tableId": filtered_table,
+                        "tableId": merged_table,
                     },
                     "allowLargeResults": True,
                     "createDisposition": "CREATE_IF_NEEDED",
@@ -117,20 +120,52 @@ def create_dag(dagname: str, config: dict) -> DAG:
             params={
                 "staging_dataset": staging_dataset,
                 "production_dataset": config["production_dataset"],
-                "staging_table_name": raw_table,
+                "staging_table_name": new_table if config["new_query"] else raw_table,
                 "production_table_name": config["production_table"],
             },
         )
 
+        if config.get("new_query"):
+            # If we have a new query, we identify all the new rows, save them, and then merge with existing data.
+            # Otherwise, we identify and merge all as part of the above merge_data step, and don't bother
+            # creating a table with only the new rows.
+            save_new_rows = BigQueryInsertJobOperator(
+                task_id="save_new_rows",
+                configuration={
+                    "query": {
+                        "query": "{% include '"
+                        + f"{sql_dir}/{config['new_query']}.sql"
+                        + "' %}",
+                        "useLegacySql": False,
+                        "destinationTable": {
+                            "projectId": PROJECT_ID,
+                            "datasetId": staging_dataset,
+                            "tableId": new_table,
+                        },
+                        "allowLargeResults": True,
+                        "createDisposition": "CREATE_IF_NEEDED",
+                        "writeDisposition": "WRITE_TRUNCATE",
+                    }
+                },
+                params={
+                    "staging_dataset": staging_dataset,
+                    "production_dataset": config["production_dataset"],
+                    "staging_table_name": raw_table,
+                    "production_table_name": config["production_table"],
+                },
+            )
+            gcs_to_bq >> save_new_rows >> merge_data
+        else:
+            gcs_to_bq >> merge_data
+
         prod_update = BigQueryToBigQueryOperator(
             task_id="prod_update",
-            source_project_dataset_tables=[f"{staging_dataset}.{filtered_table}"],
+            source_project_dataset_tables=[f"{staging_dataset}.{merged_table}"],
             destination_project_dataset_table=f"{config['production_dataset']}.{config['production_table']}",
             create_disposition="CREATE_IF_NEEDED",
             write_disposition="WRITE_TRUNCATE",
         )
 
-        date = datetime.now().strftime("%Y%m%d")
         backup = BigQueryToBigQueryOperator(
             task_id="backup",
             source_project_dataset_tables=[
@@ -145,15 +180,8 @@ def create_dag(dagname: str, config: dict) -> DAG:
             f"Ingested new data from Airtable for {config['name']}", dag
         )
 
-        (
-            clear_tmp_dir
-            >> pull_from_airtable
-            >> gcs_to_bq
-            >> filter_data
-            >> prod_update
-            >> backup
-            >> msg_success
-        )
+        (clear_tmp_dir >> pull_from_airtable >> gcs_to_bq)
+        (merge_data >> prod_update >> backup >> msg_success)
 
     return dag
 

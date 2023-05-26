@@ -36,6 +36,8 @@ your pipeline another way.
 * `airtable_base` - Airtable Base ID containing `airtable_table`. To find the Base ID, open the table you want to
 add data to in Airtable, then look at the url. The Base ID appears directly after the domain name, i.e. https://airtable.com/ **appvnA46jraScMMth** /tblfDL6s8f3LWb0C2/viwBnWFt0W8D5UcuB?blocks=hide
 * `schema_name` - Name of schema (no file extension) that can be found in `gs://airflow-data-exchange(development)?/schemas/airtable_to_bq/<name>/`
+* `new_query` - Optional. Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
+This query will be used to filter only the new rows from the contents of the full Airtable table and save them.
 * `filter_query` - Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
 This query will be used to generate the updated production table from the contents of the full Airtable table and the
 current production table.

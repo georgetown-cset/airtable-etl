@@ -29,8 +29,7 @@ from airflow.providers.google.cloud.transfers.gcs_to_bigquery import (
     GCSToBigQueryOperator,
 )
 from dataloader.airflow_utils.defaults import (
-    DEV_DATA_BUCKET,
-    GCP_ZONE,
+    DATA_BUCKET,
     PROJECT_ID,
     get_default_args,
     get_post_success,
@@ -48,7 +47,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
     :param config: Pipeline configuration
     :return: Dag that runs a scraper
     """
-    bucket = DEV_DATA_BUCKET
+    bucket = DATA_BUCKET
     staging_dataset = f"staging_{DATASET}"
     sql_dir = f"sql/{DATASET}/{config['name']}"
     schema_dir = f"schemas/{DATASET}/{config['name']}"

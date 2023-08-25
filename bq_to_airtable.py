@@ -5,28 +5,13 @@ in the Airflow dag bucket on GCS.
 
 import json
 import os
-from datetime import datetime
 
 from airflow import DAG
-from airflow.contrib.operators.bigquery_to_bigquery import BigQueryToBigQueryOperator
-from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
-from airflow.providers.google.cloud.operators.bigquery import (
-    BigQueryCheckOperator,
-    BigQueryInsertJobOperator,
-)
-from airflow.providers.google.cloud.operators.cloud_sql import (
-    CloudSQLImportInstanceOperator,
-)
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.operators.gcs import GCSDeleteObjectsOperator
-from airflow.providers.google.cloud.operators.kubernetes_engine import (
-    GKEStartPodOperator,
-)
 from airflow.providers.google.cloud.transfers.bigquery_to_gcs import (
     BigQueryToGCSOperator,
-)
-from airflow.providers.google.cloud.transfers.gcs_to_bigquery import (
-    GCSToBigQueryOperator,
 )
 from dataloader.airflow_utils.defaults import (
     DEV_DATA_BUCKET,
@@ -46,7 +31,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
     Generates a dag that will update airtable from BigQuery
     :param dagname: Name of the dag to create
     :param config: Pipeline configuration
-    :return: Dag that runs a scraper
+    :return: Dag that runs an import from bq to airtable
     """
     bucket = DEV_DATA_BUCKET
     staging_dataset = f"staging_{DATASET}"

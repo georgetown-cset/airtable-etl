@@ -9,22 +9,10 @@ from datetime import datetime
 
 from airflow import DAG
 from airflow.contrib.operators.bigquery_to_bigquery import BigQueryToBigQueryOperator
-from airflow.operators.empty import EmptyOperator
+from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
-from airflow.providers.google.cloud.operators.bigquery import (
-    BigQueryCheckOperator,
-    BigQueryInsertJobOperator,
-)
-from airflow.providers.google.cloud.operators.cloud_sql import (
-    CloudSQLImportInstanceOperator,
-)
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.operators.gcs import GCSDeleteObjectsOperator
-from airflow.providers.google.cloud.operators.kubernetes_engine import (
-    GKEStartPodOperator,
-)
-from airflow.providers.google.cloud.transfers.bigquery_to_gcs import (
-    BigQueryToGCSOperator,
-)
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import (
     GCSToBigQueryOperator,
 )
@@ -39,38 +27,25 @@ from dataloader.airflow_utils.defaults import (
 from airtable_scripts.utils import airtable_to_gcs_airflow
 
 DATASET = "airtable_to_bq"
+STAGING_DATASET = f"staging_{DATASET}"
+CONFIG_PATH = os.path.join(f"{os.environ.get('DAGS_FOLDER')}", f"{DATASET}_config")
+PARENT_CONFIG = "config.json"
 
 
-def create_dag(dagname: str, config: dict) -> DAG:
-    """
-    Generates a dag that will update BigQuery from airtable
-    :param dagname: Name of the dag to create
-    :param config: Pipeline configuration
-    :return: Dag that runs a scraper
-    """
+def update_staging(dag: DAG, start_task, config: dict):
     bucket = DEV_DATA_BUCKET
-    staging_dataset = f"staging_{DATASET}"
-    sql_dir = f"sql/{DATASET}/{config['name']}"
-    schema_dir = f"schemas/{DATASET}/{config['name']}"
-    tmp_dir = f"{DATASET}/{config['name']}/tmp"
-
-    default_args = get_default_args()
-    default_args.pop("on_failure_callback")
-
-    dag = DAG(
-        dagname,
-        default_args=default_args,
-        description=f"Airtable data export for {config['name']}",
-        schedule_interval=config["schedule_interval"],
-        catchup=False,
-    )
+    name = config["name"]
+    sql_dir = f"sql/{DATASET}/{name}"
+    schema_dir = f"schemas/{DATASET}/{name}"
+    tmp_dir = f"{DATASET}/{name}/tmp"
+    name = config["name"]
     with dag:
         clear_tmp_dir = GCSDeleteObjectsOperator(
-            task_id="clear_tmp_dir", bucket_name=bucket, prefix=tmp_dir
+            task_id=f"clear_tmp_dir_{name}", bucket_name=bucket, prefix=tmp_dir
         )
 
         pull_from_airtable = PythonOperator(
-            task_id="pull_from_airtable",
+            task_id=f"pull_{name}_from_airtable",
             op_kwargs={
                 "table_name": config["airtable_table"],
                 "base_id": config["airtable_base"],
@@ -82,15 +57,15 @@ def create_dag(dagname: str, config: dict) -> DAG:
         )
 
         date = datetime.now().strftime("%Y%m%d")
-        raw_table = f"{config['name']}_raw"
-        new_table = f"{config['name']}_new_{date}"
-        merged_table = f"{config['name']}_merged"
+        raw_table = f"{name}_raw"
+        new_table = f"{name}_new_{date}"
+        merged_table = f"{name}_merged"
         gcs_to_bq = GCSToBigQueryOperator(
-            task_id="gcs_to_bq",
+            task_id=f"gcs_to_bq_{name}",
             bucket=bucket,
             source_objects=[f"{tmp_dir}/data*"],
             schema_object=f"{schema_dir}/{config['schema_name']}.json",
-            destination_project_dataset_table=f"{staging_dataset}.{raw_table}",
+            destination_project_dataset_table=f"{STAGING_DATASET}.{raw_table}",
             source_format="NEWLINE_DELIMITED_JSON",
             create_disposition="CREATE_IF_NEEDED",
             write_disposition="WRITE_TRUNCATE",
@@ -100,7 +75,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
         # rather than trying to filter data in the airtable query, we load the entire contents of the airtable
         # table into BQ, then filter to the rows we want to update in the production table
         merge_data = BigQueryInsertJobOperator(
-            task_id="merge_data",
+            task_id=f"merge_data_{name}",
             configuration={
                 "query": {
                     "query": "{% include '"
@@ -109,7 +84,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
                     "useLegacySql": False,
                     "destinationTable": {
                         "projectId": PROJECT_ID,
-                        "datasetId": staging_dataset,
+                        "datasetId": STAGING_DATASET,
                         "tableId": merged_table,
                     },
                     "allowLargeResults": True,
@@ -118,7 +93,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
                 }
             },
             params={
-                "staging_dataset": staging_dataset,
+                "STAGING_DATASET": STAGING_DATASET,
                 "production_dataset": config["production_dataset"],
                 "staging_table_name": new_table if config["new_query"] else raw_table,
                 "production_table_name": config["production_table"],
@@ -130,7 +105,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
             # Otherwise, we identify and merge all as part of the above merge_data step, and don't bother
             # creating a table with only the new rows.
             save_new_rows = BigQueryInsertJobOperator(
-                task_id="save_new_rows",
+                task_id=f"save_new_rows_{name}",
                 configuration={
                     "query": {
                         "query": "{% include '"
@@ -139,7 +114,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
                         "useLegacySql": False,
                         "destinationTable": {
                             "projectId": PROJECT_ID,
-                            "datasetId": staging_dataset,
+                            "datasetId": STAGING_DATASET,
                             "tableId": new_table,
                         },
                         "allowLargeResults": True,
@@ -148,7 +123,7 @@ def create_dag(dagname: str, config: dict) -> DAG:
                     }
                 },
                 params={
-                    "staging_dataset": staging_dataset,
+                    "STAGING_DATASET": STAGING_DATASET,
                     "production_dataset": config["production_dataset"],
                     "staging_table_name": raw_table,
                     "production_table_name": config["production_table"],
@@ -158,37 +133,103 @@ def create_dag(dagname: str, config: dict) -> DAG:
         else:
             gcs_to_bq >> merge_data
 
+        start_task >> clear_tmp_dir >> pull_from_airtable >> gcs_to_bq
+
+        config["date"] = date
+        config["merged_table"] = merged_table
+        return merge_data
+
+
+def update_production(dag: DAG, start_task, end_task, config: dict) -> None:
+    STAGING_DATASET = f"staging_{DATASET}"
+    name = config["name"]
+    with dag:
         prod_update = BigQueryToBigQueryOperator(
-            task_id="prod_update",
-            source_project_dataset_tables=[f"{staging_dataset}.{merged_table}"],
+            task_id=f"prod_update_{name}",
+            source_project_dataset_tables=[
+                f"{STAGING_DATASET}.{config['merged_table']}"
+            ],
             destination_project_dataset_table=f"{config['production_dataset']}.{config['production_table']}",
             create_disposition="CREATE_IF_NEEDED",
             write_disposition="WRITE_TRUNCATE",
         )
 
         backup = BigQueryToBigQueryOperator(
-            task_id="backup",
+            task_id=f"backup_{name}",
             source_project_dataset_tables=[
                 f"{config['production_dataset']}.{config['production_table']}"
             ],
-            destination_project_dataset_table=f"{config['production_dataset']}_backups.{config['production_table']}_{date}",
+            destination_project_dataset_table=f"{config['production_dataset']}_backups.{config['production_table']}_{config['date']}",
             create_disposition="CREATE_IF_NEEDED",
             write_disposition="WRITE_TRUNCATE",
         )
 
-        msg_success = get_post_success(
-            f"Ingested new data from Airtable for {config['name']}", dag
-        )
+        start_task >> prod_update >> backup >> end_task
 
-        (clear_tmp_dir >> pull_from_airtable >> gcs_to_bq)
-        (merge_data >> prod_update >> backup >> msg_success)
+
+def create_dag(dagname: str, config: dict, parent_dir: str = None) -> DAG:
+    """
+    Generates a dag that will update BigQuery from airtable
+    :param dagname: Name of the dag to create
+    :param config: Pipeline configuration
+    :param parent_dir: If specified, will look in this dir for specific configs to merge with the
+    (presumed shared/general in this case) `config`
+    :return: Dag that runs an import from airtable to bq
+    """
+    default_args = get_default_args()
+    default_args.pop("on_failure_callback")
+
+    dag = DAG(
+        dagname,
+        default_args=default_args,
+        description=f"Airtable data export for {dagname}",
+        schedule_interval=config["schedule_interval"],
+        catchup=False,
+    )
+    with dag:
+        start = DummyOperator(task_id="start")
+        msg_success = get_post_success(
+            f"Ingested new data from Airtable for {dagname}", dag
+        )
+        curr_task = start
+
+        if parent_dir:
+            child_configs = []
+            for child_config_fi in os.listdir(parent_dir):
+                if child_config_fi != PARENT_CONFIG:
+                    with open(os.path.join(parent_dir, child_config_fi)) as f:
+                        child_config = json.loads(f.read())
+                        child_config.update(config)
+                        child_configs.append(child_config)
+                        curr_task = update_staging(dag, curr_task, child_config)
+            for child_config in child_configs:
+                update_production(dag, curr_task, msg_success, child_config)
+        else:
+            curr_task = update_staging(dag, start, config)
+            update_production(dag, curr_task, msg_success, config)
 
     return dag
 
 
-config_path = os.path.join(f"{os.environ.get('DAGS_FOLDER')}", f"{DATASET}_config")
-for config_fi in os.listdir(config_path):
-    with open(os.path.join(config_path, config_fi)) as f:
-        config = json.loads(f.read())
-    dagname = f"{DATASET}_{config['name']}"
-    globals()[dagname] = create_dag(dagname, config)
+for config_fi in os.listdir(CONFIG_PATH):
+    config_fi_path = os.path.join(CONFIG_PATH, config_fi)
+    if os.path.isdir(config_fi_path):
+        # in this case, we'll have a directory of configs, one named `PARENT_CONFIG`, and the rest named
+        # whatever makes sense. We'll merge the shared configuration in `PARENT_CONFIG` with the specific
+        # configuration in the other configs as we run the pipeline for each config
+        parent_config = os.path.join(config_fi_path, PARENT_CONFIG)
+        if not os.path.exists(parent_config):
+            continue
+        with open(parent_config) as f:
+            config = json.loads(f.read())
+        # we'll use the parent directory to name the dag
+        dagname = f"{DATASET}_{config_fi}"
+    else:
+        # in this case, a single top-level configuration file contains all the info we need, and the
+        # pipeline will only import data for one table
+        with open(config_fi_path) as f:
+            config = json.loads(f.read())
+        dagname = f"{DATASET}_{config['name']}"
+        parent_config = None
+    parent_path = config_fi_path if parent_config else None
+    globals()[dagname] = create_dag(dagname, config, parent_path)

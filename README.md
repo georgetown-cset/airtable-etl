@@ -46,3 +46,11 @@ current production table.
 * [Optional] `column_map` - A dict mapping Airtable column names to the column names you want to appear in BigQuery. Mapping does not have to cover all columns; unspecified columns will use Airtable names. To exclude columns from BigQuery, map them to the string "EXCLUDE"
 
 Put your JSON in `gs://<your dag dir>/dags/airtable_to_bq_config/` and `airtable_to_bq.py` will generate a DAG from it.
+
+## Adding multiple imports/exports per pipeline
+
+You can now specify both single or multiple imports/exports per pipeline. As you can see in the `examples` directory,
+single exports should be specified in a single config file within
+`gs://<your dag dir>/dags/{airtable_to_bq or bq_to_airtable, as appropriate}_config/`. Multiple exports can be defined
+with a directory under `gs://<your dag dir>/dags/`. The pipeline will be named after the directory name. Shared
+configuration should go in a `config.json`, while table-specific configuration should go in individual config files.

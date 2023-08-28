@@ -1,0 +1,10 @@
+{
+  "name": "single_bq_to_airtable_test",
+  "schedule_interval": null,
+  "input_data": "base2_table1_input",
+  "airtable_table": "Table 1",
+  "airtable_base": "appXT1UR1cojQQWwv",
+  "column_map": {
+    "bq_name": "Name"
+  }
+}

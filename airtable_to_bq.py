@@ -35,10 +35,9 @@ PARENT_CONFIG = "config.json"
 def update_staging(dag: DAG, start_task, config: dict):
     bucket = DEV_DATA_BUCKET
     name = config["name"]
-    sql_dir = f"sql/{DATASET}/{name}"
-    schema_dir = f"schemas/{DATASET}/{name}"
-    tmp_dir = f"{DATASET}/{name}/tmp"
-    name = config["name"]
+    sql_dir = f"sql/{DATASET}/{config.get('parent_name', name)}"
+    schema_dir = f"schemas/{DATASET}/{config.get('parent_name', name)}"
+    tmp_dir = f"{DATASET}/{name if 'parent_name' not in config else config['parent_name']+'_'+name}/tmp"
     with dag:
         clear_tmp_dir = GCSDeleteObjectsOperator(
             task_id=f"clear_tmp_dir_{name}", bucket_name=bucket, prefix=tmp_dir
@@ -93,9 +92,11 @@ def update_staging(dag: DAG, start_task, config: dict):
                 }
             },
             params={
-                "STAGING_DATASET": STAGING_DATASET,
+                "staging_dataset": STAGING_DATASET,
                 "production_dataset": config["production_dataset"],
-                "staging_table_name": new_table if config["new_query"] else raw_table,
+                "staging_table_name": new_table
+                if config.get("new_query")
+                else raw_table,
                 "production_table_name": config["production_table"],
             },
         )
@@ -123,7 +124,7 @@ def update_staging(dag: DAG, start_task, config: dict):
                     }
                 },
                 params={
-                    "STAGING_DATASET": STAGING_DATASET,
+                    "staging_dataset": STAGING_DATASET,
                     "production_dataset": config["production_dataset"],
                     "staging_table_name": raw_table,
                     "production_table_name": config["production_table"],
@@ -201,6 +202,9 @@ def create_dag(dagname: str, config: dict, parent_dir: str = None) -> DAG:
                         child_config = json.loads(f.read())
                         child_config.update(config)
                         child_configs.append(child_config)
+                        child_config["name"] = child_config.get(
+                            "name", child_config_fi.replace(".json", "")
+                        )
                         curr_task = update_staging(dag, curr_task, child_config)
             for child_config in child_configs:
                 update_production(dag, curr_task, msg_success, child_config)
@@ -222,6 +226,7 @@ for config_fi in os.listdir(CONFIG_PATH):
             continue
         with open(parent_config) as f:
             config = json.loads(f.read())
+        config["parent_name"] = config_fi
         # we'll use the parent directory to name the dag
         dagname = f"{DATASET}_{config_fi}"
     else:

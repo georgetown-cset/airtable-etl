@@ -6,8 +6,6 @@
   "merge_query": "base1_table1_merge",
   "production_table": "base1_table1",
   "column_map": {
-    "Foo": "foo",
-    "Bar": "bar",
-    "Baz": "baz"
+    "Foo": "foo"
   }
 }

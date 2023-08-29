@@ -1,0 +1,7 @@
+{
+  "input_data": "base1_table1_input",
+  "airtable_table": "Table 1",
+  "column_map": {
+    "rename_bar": "bar"
+  }
+}

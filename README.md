@@ -36,7 +36,7 @@ your pipeline another way.
 * `airtable_base` - Airtable Base ID containing `airtable_table`. To find the Base ID, open the table you want to
 add data to in Airtable, then look at the url. The Base ID appears directly after the domain name, i.e. https://airtable.com/ **appvnA46jraScMMth** /tblfDL6s8f3LWb0C2/viwBnWFt0W8D5UcuB?blocks=hide
 * `schema_name` - Name of schema (no file extension) that can be found in `gs://airflow-data-exchange(development)?/schemas/airtable_to_bq/<name>/`
-* `new_query` - Optional. Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
+* [Optional] `new_query` - Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
 This query will be used to filter only the new rows from the contents of the full Airtable table and save them.
 * `merge_query` - Name of query (no file extension) that can be found in `gs://<your dag dir>/dags/sql/airtable_to_bq/<name>/`.
 This query will be used to generate the updated production table from the contents of the full Airtable table and the
@@ -46,3 +46,11 @@ current production table.
 * [Optional] `column_map` - A dict mapping Airtable column names to the column names you want to appear in BigQuery. Mapping does not have to cover all columns; unspecified columns will use Airtable names. To exclude columns from BigQuery, map them to the string "EXCLUDE"
 
 Put your JSON in `gs://<your dag dir>/dags/airtable_to_bq_config/` and `airtable_to_bq.py` will generate a DAG from it.
+
+## Adding multiple imports/exports per pipeline
+
+You can now specify both single or multiple imports/exports per pipeline. As you can see in the `examples` directory,
+single exports should be specified in a single config file within
+`gs://<your dag dir>/dags/{airtable_to_bq or bq_to_airtable, as appropriate}_config/`. Multiple exports can be defined
+with a directory under `gs://<your dag dir>/dags/`. The pipeline will be named after the directory name. Shared
+configuration should go in a `config.json`, while table-specific configuration should go in individual config files.

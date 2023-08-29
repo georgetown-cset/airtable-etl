@@ -1,0 +1,12 @@
+{
+  "airtable_table": "Table 2",
+  "airtable_base": "appXT1UR1cojQQWwv",
+  "schema_name": "default",
+  "merge_query": "default_merge",
+  "production_table": "base2_table2",
+  "column_map": {
+    "Notes": "some_notes",
+    "Assignee": "EXCLUDE",
+    "Status": "EXCLUDE"
+  }
+}

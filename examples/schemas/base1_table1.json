@@ -1,0 +1,17 @@
+[
+  {
+    "name": "foo",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "bar",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "baz",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  }
+]

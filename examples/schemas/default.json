@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "some_notes",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "import_date",
+    "type": "DATE",
+    "mode": "NULLABLE"
+  }
+]

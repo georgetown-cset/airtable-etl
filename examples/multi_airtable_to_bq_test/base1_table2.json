@@ -1,0 +1,12 @@
+{
+  "airtable_table": "Table 2",
+  "airtable_base": "appvnA46jraScMMth",
+  "schema_name": "default",
+  "new_query": "base1_table2_new",
+  "merge_query": "default_merge",
+  "production_table": "base1_table2",
+  "column_map": {
+    "Notes": "some_notes",
+    "Status": "EXCLUDE"
+  }
+}

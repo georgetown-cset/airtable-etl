@@ -17,8 +17,8 @@ from airflow.providers.google.cloud.transfers.gcs_to_bigquery import (
     GCSToBigQueryOperator,
 )
 from dataloader.airflow_utils.defaults import (
-    DEV_DATA_BUCKET,
-    GCP_ZONE,
+    DAGS_DIR,
+    DATA_BUCKET,
     PROJECT_ID,
     get_default_args,
     get_post_success,
@@ -28,7 +28,7 @@ from airtable_scripts.utils import airtable_to_gcs_airflow
 
 DATASET = "airtable_to_bq"
 STAGING_DATASET = f"staging_{DATASET}"
-CONFIG_PATH = os.path.join(f"{os.environ.get('DAGS_FOLDER')}", f"{DATASET}_config")
+CONFIG_PATH = os.path.join(DAGS_DIR, f"{DATASET}_config")
 PARENT_CONFIG = "config.json"
 
 
@@ -40,7 +40,7 @@ def update_staging(dag: DAG, start_task, config: dict):
     :param config: Task configuration
     :return: Final task defined in this function
     """
-    bucket = DEV_DATA_BUCKET
+    bucket = DATA_BUCKET
     name = config["name"]
     sql_dir = f"sql/{DATASET}/{config.get('parent_name', name)}"
     schema_dir = f"schemas/{DATASET}/{config.get('parent_name', name)}"
@@ -192,7 +192,7 @@ def create_dag(dagname: str, config: dict, parent_dir: str = None) -> DAG:
     (presumed shared/general in this case) `config`
     :return: Dag that runs an import from airtable to bq
     """
-    default_args = get_default_args()
+    default_args = get_default_args(pocs=["Neha"])
     default_args.pop("on_failure_callback")
 
     dag = DAG(

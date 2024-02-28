@@ -7,7 +7,7 @@ import os
 import tempfile
 
 import requests
-from airflow.hooks.base_hook import BaseHook
+from dataloader.airflow_utils.utils import get_connection_info
 from google.cloud import storage
 from more_itertools import batched
 
@@ -110,8 +110,8 @@ def gcs_to_airtable_airflow(
     column names will be used in Airtable
     :return: None
     """
-    connection = BaseHook.get_connection("airtable")
-    token = connection.password
+    connection = get_connection_info("ETO_scout_airtable")
+    token = connection["password"]
     gcs_to_airtable(bucket_name, input_prefix, table_name, base_id, token, column_map)
 
 
@@ -191,8 +191,8 @@ def airtable_to_gcs_airflow(
     column names will be used in Airtable
     :return: None
     """
-    connection = BaseHook.get_connection("airtable")
-    token = connection.password
+    connection = get_connection_info("ETO_scout_airtable")
+    token = connection["password"]
     airtable_to_gcs(table_name, base_id, bucket_name, output_prefix, token, column_map)
 
 

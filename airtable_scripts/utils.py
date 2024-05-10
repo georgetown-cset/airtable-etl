@@ -115,12 +115,15 @@ def gcs_to_airtable_airflow(
     gcs_to_airtable(bucket_name, input_prefix, table_name, base_id, token, column_map)
 
 
-def get_airtable_iter(table_name: str, base_id: str, token: str) -> iter:
+def get_airtable_iter(
+    table_name: str, base_id: str, token: str, include_airtable_id: bool = False
+) -> iter:
     """
     Retrieves data from an airtable table
     :param table_name: Airtable table name we are retrieving data from
     :param base_id: Airtable base
     :param token: Airtable access token
+    :param include_airtable_id: If true, the airtable id of each row will be included in the results
     :return: Iterable of rows from `table_name`
     """
     headers = {"Authorization": f"Bearer {token}"}
@@ -133,7 +136,10 @@ def get_airtable_iter(table_name: str, base_id: str, token: str) -> iter:
         )
         data = result.json()
         for row in data["records"]:
-            yield row["fields"]
+            content = row["fields"]
+            if include_airtable_id:
+                content["airtable_id"] = row["id"]
+            yield content
         # An offset will be provided if there is an additional page of data to retrieve
         if not data.get("offset"):
             break
@@ -147,6 +153,7 @@ def airtable_to_gcs(
     output_prefix: str,
     token: str,
     column_map: dict,
+    include_airtable_id: bool = False,
 ) -> None:
     """
     Retrieves data from airtable and writes it to GCS
@@ -157,12 +164,13 @@ def airtable_to_gcs(
     :param token: Airtable access token
     :param column_map: A mapping from Airtable column names to BigQuery column names. If null, BigQuery
     column names will be used in Airtable
+    :param include_airtable_id: If true, the airtable id of each row will be included in the results
     :return: None
     """
     gcs_client = storage.Client()
     bucket = gcs_client.get_bucket(bucket_name)
     blob = bucket.blob(output_prefix.strip("/") + "/data.jsonl")
-    data = get_airtable_iter(table_name, base_id, token)
+    data = get_airtable_iter(table_name, base_id, token, include_airtable_id)
     with blob.open("w") as f:
         for row in data:
             if column_map:
@@ -180,6 +188,7 @@ def airtable_to_gcs_airflow(
     bucket_name: str,
     output_prefix: str,
     column_map: dict,
+    include_airtable_id: bool = False,
 ) -> None:
     """
     Calls `airtable_to_gcs` from airflow, where we can grab the API key from the airtable connection
@@ -189,11 +198,20 @@ def airtable_to_gcs_airflow(
     :param output_prefix: GCS prefix where output data should go within `bucket`
     :param column_map: A mapping from Airtable column names to BigQuery column names. If null, BigQuery
     column names will be used in Airtable
+    :param include_airtable_id: If true, the airtable id of each row will be included in the results
     :return: None
     """
     connection = get_connection_info("ETO_scout_airtable")
     token = connection["password"]
-    airtable_to_gcs(table_name, base_id, bucket_name, output_prefix, token, column_map)
+    airtable_to_gcs(
+        table_name,
+        base_id,
+        bucket_name,
+        output_prefix,
+        token,
+        column_map,
+        include_airtable_id,
+    )
 
 
 if __name__ == "__main__":

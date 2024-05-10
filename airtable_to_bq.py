@@ -58,6 +58,7 @@ def update_staging(dag: DAG, start_task, config: dict):
                 "bucket_name": bucket,
                 "output_prefix": f"{tmp_dir}/data",
                 "column_map": config.get("column_map"),
+                "include_airtable_id": config.get("include_airtable_id"),
             },
             python_callable=airtable_to_gcs_airflow,
         )
@@ -211,7 +212,7 @@ def create_dag(dagname: str, config: dict, parent_dir: str = None) -> DAG:
 
         if parent_dir:
             child_configs = []
-            for child_config_fi in os.listdir(parent_dir):
+            for child_config_fi in sorted(os.listdir(parent_dir)):
                 if child_config_fi != PARENT_CONFIG:
                     with open(os.path.join(parent_dir, child_config_fi)) as f:
                         child_config = json.loads(f.read())

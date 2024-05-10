@@ -119,7 +119,7 @@ def create_dag(dagname: str, config: dict, parent_dir: str) -> DAG:
 
         prev_task = wait_for_export
         if parent_dir:
-            for child_config_fi in os.listdir(parent_dir):
+            for child_config_fi in sorted(os.listdir(parent_dir)):
                 if child_config_fi != PARENT_CONFIG:
                     with open(os.path.join(parent_dir, child_config_fi)) as f:
                         child_config = json.loads(f.read())

@@ -15,12 +15,16 @@ from more_itertools import batched
 EXCLUDE = "EXCLUDE"
 
 
-def jsonl_dir_to_json_iter(jsonl_dir: str, column_map: dict) -> iter:
+def jsonl_dir_to_json_iter(
+    jsonl_dir: str, column_map: dict, integer_cols: list
+) -> iter:
     """
     Reads data from directory of jsonl files and returns it as a generator
     :param jsonl_dir: Directory containing jsonl files
     :param column_map: A mapping from BQ column names to Airtable column names. If null, BQ
     column names will be used in Airtable
+    :param integer_cols: Columns with values that should be converted to integer (see also:
+    https://issuetracker.google.com/issues/35905373?pli=1)
     :return: Generator of dicts corresponding to each record in `jsonl_dir`
     """
     for fi in os.listdir(jsonl_dir):
@@ -29,19 +33,25 @@ def jsonl_dir_to_json_iter(jsonl_dir: str, column_map: dict) -> iter:
                 row = json.loads(line)
                 if column_map:
                     row = {column_map.get(k, k): v for k, v in row.items()}
+                for col in integer_cols:
+                    row[col] = int(row[col])
                 yield row
 
 
-def jsonl_dir_to_batches(jsonl_dir: str, column_map: dict, batch_size=10) -> iter:
+def jsonl_dir_to_batches(
+    jsonl_dir: str, column_map: dict, integer_cols: list, batch_size=10
+) -> iter:
     """
     Batches the data within `jsonl_dir` into chunks of `batch_size`
     :param jsonl_dir: Directory containing input data
     :param column_map: A mapping from BQ column names to Airtable column names. If null, BQ
     column names will be used in Airtable
+    :param integer_cols: Columns with values that should be converted to integer (see also:
+    https://issuetracker.google.com/issues/35905373?pli=1)
     :param batch_size: Max number of records each batch should contain
     :return: Iterable of batches
     """
-    jsons = jsonl_dir_to_json_iter(jsonl_dir, column_map)
+    jsons = jsonl_dir_to_json_iter(jsonl_dir, column_map, integer_cols)
     return batched(jsons, batch_size)
 
 
@@ -73,6 +83,7 @@ def gcs_to_airtable(
     base_id: str,
     token: str,
     column_map: dict,
+    integer_cols: list,
 ) -> None:
     """
     Ingests a JSONL data export of one or more files starting with `input_prefix` within `bucket` into Airtable
@@ -83,6 +94,8 @@ def gcs_to_airtable(
     :param token: Airtable access token
     :param column_map: A mapping from BQ column names to Airtable column names. If null, BQ
     column names will be used in Airtable
+    :param integer_cols: Columns with values that should be converted to integer (see also:
+    https://issuetracker.google.com/issues/35905373?pli=1)
     :return: None
     """
     gcs_client = storage.Client()
@@ -92,13 +105,18 @@ def gcs_to_airtable(
         for blob in blobs:
             file_name = os.path.join(tmpdir, blob.name.split("/")[-1])
             blob.download_to_filename(file_name)
-        batches = jsonl_dir_to_batches(tmpdir, column_map)
+        batches = jsonl_dir_to_batches(tmpdir, column_map, integer_cols)
         for batch in batches:
             insert_into_airtable(base_id, table_name, batch, token)
 
 
 def gcs_to_airtable_airflow(
-    bucket_name: str, input_prefix: str, table_name: str, base_id: str, column_map: dict
+    bucket_name: str,
+    input_prefix: str,
+    table_name: str,
+    base_id: str,
+    column_map: dict,
+    integer_cols: list,
 ) -> None:
     """
     Calls `gcs_to_airtable` from airflow, where we can grab the API key from the airtable connection
@@ -108,11 +126,15 @@ def gcs_to_airtable_airflow(
     :param base_id: Airtable base id
     :param column_map: A mapping from BQ column names to Airtable column names. If null, BQ
     column names will be used in Airtable
+    :param integer_cols: Columns with values that should be converted to integer (see also:
+    https://issuetracker.google.com/issues/35905373?pli=1)
     :return: None
     """
     connection = get_connection_info("ETO_scout_airtable")
     token = connection["password"]
-    gcs_to_airtable(bucket_name, input_prefix, table_name, base_id, token, column_map)
+    gcs_to_airtable(
+        bucket_name, input_prefix, table_name, base_id, token, column_map, integer_cols
+    )
 
 
 def get_airtable_iter(

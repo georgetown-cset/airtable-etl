@@ -82,6 +82,7 @@ def update_airtable(dag: DAG, start_task, end_task, config: dict):
                 "table_name": config["airtable_table"],
                 "base_id": config["airtable_base"],
                 "column_map": config.get("column_map"),
+                "integer_cols": config.get("integer_cols", []),
             },
             python_callable=gcs_to_airtable_airflow,
         )

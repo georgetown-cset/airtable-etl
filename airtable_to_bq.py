@@ -212,7 +212,12 @@ def create_dag(dagname: str, config: dict, parent_dir: str = None) -> DAG:
 
         if parent_dir:
             child_configs = []
-            for child_config_fi in sorted(os.listdir(parent_dir)):
+            # If the user has specified an ordering to the configs (e.g. because some merge queries have dependencies
+            # on other imported tables), we'll use that; otherwise we will run the imports alphabetically.
+            child_config_files = config.get(
+                "import_order", sorted(os.listdir(parent_dir))
+            )
+            for child_config_fi in child_config_files:
                 if child_config_fi != PARENT_CONFIG:
                     with open(os.path.join(parent_dir, child_config_fi)) as f:
                         child_config = json.loads(f.read())

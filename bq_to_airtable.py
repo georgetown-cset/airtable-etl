@@ -101,7 +101,6 @@ def create_dag(dagname: str, config: dict, parent_dir: str) -> DAG:
     :return: Dag that runs an import from bq to airtable
     """
     default_args = get_default_args(pocs=["James"])
-    default_args.pop("on_failure_callback")
 
     dag = DAG(
         dagname,

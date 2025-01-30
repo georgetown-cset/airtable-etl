@@ -54,3 +54,9 @@ single exports should be specified in a single config file within
 `gs://<your dag dir>/dags/{airtable_to_bq or bq_to_airtable, as appropriate}_config/`. Multiple exports can be defined
 with a directory under `gs://<your dag dir>/dags/`. The pipeline will be named after the directory name. Shared
 configuration should go in a `config.json`, while table-specific configuration should go in individual config files.
+
+## Airtable credentials
+
+We're using a [Personal Access Token](https://airtable.com/developers/web/guides/personal-access-tokens) to authenticate with Airtable.
+This type of token is tied to a particular user (currently jd1881), so deleting that user from our Airtable organization will invalidate the credentials.
+To use a new token, create it in Airtable, then update in [Secret Manager](https://cloud.google.com/secret-manager/docs/overview) the `ETO_scout_airtable` secret, and any others as necessary.

@@ -156,6 +156,7 @@ def get_airtable_iter(
             f"https://api.airtable.com/v0/{base_id}/{table_name}{query}",
             headers=headers,
         )
+        result.raise_for_status()
         data = result.json()
         for row in data["records"]:
             content = row["fields"]

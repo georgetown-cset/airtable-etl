@@ -44,7 +44,7 @@ def update_staging(dag: DAG, start_task, config: dict):
     name = config["name"]
     sql_dir = f"sql/{DATASET}/{config.get('parent_name', name)}"
     schema_dir = f"schemas/{DATASET}/{config.get('parent_name', name)}"
-    tmp_dir = f"{DATASET}/{name if 'parent_name' not in config else config['parent_name']+'_'+name}/tmp"
+    tmp_dir = f"{DATASET}/{name if 'parent_name' not in config else config['parent_name'] + '_' + name}/tmp"
     with dag:
         clear_tmp_dir = GCSDeleteObjectsOperator(
             task_id=f"clear_tmp_dir_{name}", bucket_name=bucket, prefix=tmp_dir

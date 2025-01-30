@@ -42,7 +42,7 @@ def update_airtable(dag: DAG, start_task, end_task, config: dict):
     bucket = DATA_BUCKET
     name = config["name"]
     sql_dir = f"sql/{DATASET}/{config.get('parent_name', name)}"
-    tmp_dir = f"{DATASET}/{name if 'parent_name' not in config else config['parent_name']+'_'+name}/tmp"
+    tmp_dir = f"{DATASET}/{name if 'parent_name' not in config else config['parent_name'] + '_' + name}/tmp"
     with dag:
         clear_tmp_dir = GCSDeleteObjectsOperator(
             task_id=f"clear_tmp_dir_{name}", bucket_name=bucket, prefix=tmp_dir

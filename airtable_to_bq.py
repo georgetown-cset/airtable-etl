@@ -102,9 +102,9 @@ def update_staging(dag: DAG, start_task, config: dict):
             params={
                 "staging_dataset": STAGING_DATASET,
                 "production_dataset": config["production_dataset"],
-                "staging_table_name": new_table
-                if config.get("new_query")
-                else raw_table,
+                "staging_table_name": (
+                    new_table if config.get("new_query") else raw_table
+                ),
                 "production_table_name": config["production_table"],
             },
         )

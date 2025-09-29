@@ -100,7 +100,7 @@ def create_dag(dagname: str, config: dict, parent_dir: str) -> DAG:
     (presumed shared/general in this case) `config`
     :return: Dag that runs an import from bq to airtable
     """
-    default_args = get_default_args(pocs=["James"])
+    default_args = get_default_args(pocs=["Daniel"])
 
     dag = DAG(
         dagname,

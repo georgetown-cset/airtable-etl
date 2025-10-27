@@ -24,6 +24,13 @@ jobs:
           service_account: 'eto-artifact-registry-github@gcp-cset-projects.iam.gserviceaccount.com'
           token_format: 'access_token'
 
+      - name: Testing Authentication (temporary will delete later)
+        run: |
+          echo "Testing auth"
+          gcloud auth list
+          echo "Dags folder:"
+          gsutil ls gs://us-east1-production-cc2-202-b42a7a54-bucket
+
       - name: Run push_to_airflow.sh
         env:
             GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }} # gsutil will use the Google token to authenticate

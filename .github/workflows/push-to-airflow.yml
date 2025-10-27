@@ -17,13 +17,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+        id: auth
+        uses: google-github-actions/auth@v2 # takes the Github token and gets a Google token
         with:
           workload_identity_provider: 'projects/855475113448/locations/global/workloadIdentityPools/eto-github/providers/eto-github'
           service_account: 'eto-artifact-registry-github@gcp-cset-projects.iam.gserviceaccount.com'
           token_format: 'access_token'
 
       - name: Run push_to_airflow.sh
+        env:
+            GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }} # gsutil will use the Google token to authenticate
         run: |
           chmod +x ./push_to_airflow.sh
           ./push_to_airflow.sh

@@ -25,6 +25,8 @@ jobs:
           token_format: 'access_token'
 
       - name: Testing Authentication (temporary will delete later)
+        env:
+            GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }} # gsutil will use the Google token to authenticate
         run: |
           echo "Testing auth"
           gcloud auth list

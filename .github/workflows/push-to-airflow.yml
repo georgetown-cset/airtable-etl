@@ -8,6 +8,10 @@ jobs:
     name: Run push_to_airflow.sh
     runs-on: ubuntu-latest
 
+    permissions:
+        contents: 'read' # lets the workflow read our code
+        id-token: 'write' # lets the workflow ask GitHub for a temporary token to log in to Google Cloud
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

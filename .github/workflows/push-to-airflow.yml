@@ -14,7 +14,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-        # Requests a GH token and exchanges it with GCP. GCP sends back a temp access token for the eto-cd-github service account
+        # Requests a GH token and exchanges it with GCP. GCP sends back a temp access token for the requested service account
       - name: Authenticate to Google Cloud
         id: 'auth'
         uses: google-github-actions/auth@v2

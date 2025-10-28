@@ -7,35 +7,23 @@ jobs:
   push_to_airflow:
     name: Run push_to_airflow.sh
     runs-on: ubuntu-latest
-
     permissions:
-        contents: 'read' # lets the workflow read our code
-        id-token: 'write' # lets the workflow ask GitHub for a temporary token to log in to Google Cloud
-
+        contents: read # lets the workflow read this code
+        id-token: write # lets the workflow ask GitHub for an OIDC token
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+        # Requests a GH token and exchanges it with GCP. GCP sends back a temp access token for the eto-cd-github service account
       - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2 # takes the Github token and gets a Google token
+        id: 'auth'
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/855475113448/locations/global/workloadIdentityPools/eto-github/providers/eto-github'
-          service_account: 'eto-artifact-registry-github@gcp-cset-projects.iam.gserviceaccount.com'
+          service_account: 'eto-cd-github@gcp-cset-projects.iam.gserviceaccount.com'
           token_format: 'access_token'
 
-      - name: Testing Authentication (temporary will delete later)
-        env:
-            GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }} # gsutil will use the Google token to authenticate
-        run: |
-          echo "Testing auth"
-          gcloud auth list
-          echo "Dags folder:"
-          gsutil ls gs://us-east1-production-cc2-202-b42a7a54-bucket
-
       - name: Run push_to_airflow.sh
-        env:
-            GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }} # gsutil will use the Google token to authenticate
         run: |
           chmod +x ./push_to_airflow.sh
           ./push_to_airflow.sh

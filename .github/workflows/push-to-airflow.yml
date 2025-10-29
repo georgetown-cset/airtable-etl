@@ -7,16 +7,20 @@ jobs:
   push_to_airflow:
     name: Run push_to_airflow.sh
     runs-on: ubuntu-latest
-
+    permissions:
+        contents: read # lets the workflow read this code
+        id-token: write # lets the workflow ask GitHub for an OIDC token
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+        # Requests a GH token and exchanges it with GCP. GCP sends back a temp access token for the requested service account
       - name: Authenticate to Google Cloud
+        id: 'auth'
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/855475113448/locations/global/workloadIdentityPools/eto-github/providers/eto-github'
-          service_account: 'eto-artifact-registry-github@gcp-cset-projects.iam.gserviceaccount.com'
+          workload_identity_provider: 'projects/855475113448/locations/global/workloadIdentityPools/github/providers/github'
+          service_account: 'github-actions@gcp-cset-projects.iam.gserviceaccount.com'
           token_format: 'access_token'
 
       - name: Run push_to_airflow.sh

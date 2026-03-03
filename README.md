@@ -54,6 +54,31 @@ single exports should be specified in a single config file within
 `gs://<your dag dir>/dags/{airtable_to_bq or bq_to_airtable, as appropriate}_config/`. Multiple exports can be defined
 with a directory under `gs://<your dag dir>/dags/`. The pipeline will be named after the directory name. Shared
 configuration should go in a `config.json`, while table-specific configuration should go in individual config files.
+* Make sure the `name` field inside the table-specific config is unique and not a duplicate name of any tables inside the `staging_airtable_to_bq` dataset in BigQuery.
+
+## Updating a single Airtable -> BQ pipeline to include multiple Airtable tables
+To update a single Airtable -> BQ pipeline in `gs://<your dag dir>/dags/airtable_to_bq_config/{current_pipeline}.json`, make a folder in `gs://<your dag dir>/dags/airtable_to_bq_config/`
+* The name of the folder will be the same as the `name` field in `{current_pipeline}.json`
+* `config.json` - Create this file inside the new folder. Move the `schedule_interval` and `production_dataset` from `{current_pipeline}.json` to this file
+* Move `{current_pipeline}.json` inside the folder
+* `Table specific config files`: Create a new config file `{new_table}.json` for tables inside this folder
+    * Make sure the `name` field inside this config is unique and not a duplicate name of any tables inside the `staging_airtable_to_bq` dataset in BigQuery.
+
+SQL files:
+* Create a folder (if it doesn't exist) with the same name as the previously created folder inside `gs://<your dag dir>/dags/sql/airtable_to_bq/`
+* Move the pipeline's existing SQL file inside this folder
+* Create the merge query `{new_table}_merge.sql` for the new table inside this folder (and optional new query)
+
+Schema files:
+* Create a folder (if it doesn't exist) with the same name as the previously created folder inside `gs://airflow-data-exchange/schemas/airtable_to_bq/`
+* Move the pipeline's existing schema file inside this folder
+* Create the schema file `{new_table}.json` for the new table inside this folder
+
+## Adding a column to an Airtable table that goes to BQ
+1. Add the column name to the `merge query`
+    * If the merge query references the prod table, manually add the column to the prod table in BQ
+2. Add the column name to `column_map` inside the table's json config
+3. Add the column name to the table's `schema file`
 
 ## Airtable credentials
 
